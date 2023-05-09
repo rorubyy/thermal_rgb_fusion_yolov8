@@ -1,0 +1,22 @@
+# build Image from Docker Hub
+version: "2.4"
+services:
+  lab:
+    #container_name: aicup
+    image: shungfu/cuda11.3_cudnn8
+    # build: .
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - DISPLAY=${DISPLAY}
+    stdin_open: true
+    tty: true
+    # network_mode: "host"
+    volumes:
+      - .:/root/code
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    ports:
+      - "8086:8086"
+    ipc: host
+    privileged: false
+    # command: "nvidia-smi"
