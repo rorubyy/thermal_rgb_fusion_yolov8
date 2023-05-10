@@ -155,7 +155,9 @@ class BaseValidator:
 
             # Inference
             with dt[1]:
-                preds = model(batch['img'])
+                imgs_rgb = batch['img'][:, :3, :, :]
+                imgs_ir = batch['img'][:, 3:, :, :]
+                preds = model(imgs_rgb, imgs_ir)
 
             # Loss
             with dt[2]:

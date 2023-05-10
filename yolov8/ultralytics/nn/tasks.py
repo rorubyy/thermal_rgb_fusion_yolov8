@@ -8,7 +8,7 @@ import thop
 import torch
 import torch.nn as nn
 
-from ultralytics.nn.modules import (C1, C2, C3, C3TR, SPP, SPPF, Bottleneck, BottleneckCSP, C2f, C3Ghost, C3x, Classify,
+from ultralytics.nn.modules import (C1, C2, C3, C3TR, GPT, SPP, SPPF, Add, Add2, Bottleneck, BottleneckCSP, C2f, C3Ghost, C3x, Classify,
                                     Concat, Conv, ConvTranspose, Detect, DWConv, DWConvTranspose2d, Ensemble, Focus,
                                     GhostBottleneck, GhostConv, Pose, Segment)
 from ultralytics.yolo.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, colorstr, emojis, yaml_load
@@ -186,9 +186,7 @@ class DetectionModel(BaseModel):
         m = self.model[-1]  # Detect()
         if isinstance(m, (Detect, Segment, Pose)):
             s = 256  # 2x min stride
-            m.inplace = self.inplace
-            forward = lambda x: self.forward(x)[0] if isinstance(m, (Segment, Pose)) else self.forward(x)
-            m.stride = torch.tensor([s / x.shape[-2] for x in forward(torch.zeros(1, ch, s, s))])  # forward
+            m.stride = torch.tensor([8.0, 16.0, 32.0])
             self.stride = m.stride
             m.bias_init()  # only run once
 
@@ -198,11 +196,48 @@ class DetectionModel(BaseModel):
             self.info()
             LOGGER.info('')
 
-    def forward(self, x, augment=False, profile=False, visualize=False):
+    def forward(self, x, x2, augment=False, profile=False, visualize=False):
         """Run forward pass on input image(s) with optional augmentation and profiling."""
         if augment:
             return self._forward_augment(x)  # augmented inference, None
-        return self._forward_once(x, profile, visualize)  # single-scale inference, train
+        # print("-----input forward----- x1:", x.size())
+        # print("-----input forward----- x2:", x2.size())
+
+        return self.forward_once(x, x2, profile)
+
+    def forward_once(self, x, x2, profile=False):
+        """
+
+        :param x:          RGB Inputs
+        :param x2:         IR  Inputs
+        :param profile:
+        :return:
+        """
+        y, dt = [], []  # outputs
+        i = 0
+        for m in self.model:
+            # print("Moudle", i)
+            if m.f != -1:  # if not from previous layer
+                if m.f != -4:
+                    # print(m)
+                    x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
+
+            if profile:
+                o = thop.profile(m, inputs=(x,), verbose=False)[0] / 1E9 * 2 if thop else 0  # FLOPS
+                t = time_sync()
+                for _ in range(10):
+                    _ = m(x)
+                dt.append((time_sync() - t) * 100)
+            # print("-----x2-----",x2.shape)
+            # print("-----x1-----",x.shape)
+            if m.f == -4:
+                x = m(x2)
+            else:
+                x = m(x)  # run
+            y.append(x if m.i in self.save else None)  # save output
+            # print(len(y))
+            i += 1
+        return x
 
     def _forward_augment(self, x):
         """Perform augmentations on input image x and return augmented inference and train outputs."""
@@ -473,14 +508,18 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
         n = n_ = max(round(n * depth), 1) if n > 1 else n  # depth gain
         if m in (Classify, Conv, ConvTranspose, GhostConv, Bottleneck, GhostBottleneck, SPP, SPPF, DWConv, Focus,
                  BottleneckCSP, C1, C2, C2f, C3, C3TR, C3Ghost, nn.ConvTranspose2d, DWConvTranspose2d, C3x):
-            c1, c2 = ch[f], args[0]
+            if m is Focus:
+                c1, c2 = 3, args[0]
+            else:
+                c1, c2 = ch[f], args[0]
+
             if c2 != nc:  # if c2 not equal to number of classes (i.e. for Classify() output)
                 c2 = make_divisible(min(c2, max_channels) * width, 8)
-
-            args = [c1, c2, *args[1:]]
+                args = [c1, c2, *args[1:]]
             if m in (BottleneckCSP, C1, C2, C2f, C3, C3TR, C3Ghost, C3x):
                 args.insert(2, n)  # number of repeats
                 n = 1
+
         elif m is nn.BatchNorm2d:
             args = [ch[f]]
         elif m is Concat:
@@ -489,6 +528,15 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             args.append([ch[x] for x in f])
             if m is Segment:
                 args[2] = make_divisible(min(args[2], max_channels) * width, 8)
+        elif m is GPT:
+            c2 = ch[f[0]]
+            args = [c2]
+        elif m is Add2:
+            c2 = ch[f[0]]
+            args = [c2, args[1]]
+        elif m is Add:
+            c2 = ch[f[0]]
+            args = [c2]
         else:
             c2 = ch[f]
 

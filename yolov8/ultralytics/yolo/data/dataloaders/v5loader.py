@@ -773,7 +773,7 @@ class LoadImagesAndLabels(Dataset):
             img_rgb, img_ir, (h0, w0), (h, w) = self. load_image(index)
 
             # Letterbox
-            shape = self.batch_shapes[self.batch[index]] if self.rect else self.img_size  # final letterboxed shape
+            shape = self.batch_shapes_rgb[self.batch_rgb[index]] if self.rect else self.img_size  # final letterboxed shape
             img_rgb, ratio, pad = letterbox(img_rgb, shape, auto=False, scaleup=self.augment)
             img_ir, ratio, pad = letterbox(img_ir, shape, auto=False, scaleup=self.augment)
 

@@ -324,6 +324,12 @@ def plot_images(images,
     if np.max(images[0]) <= 1:
         images *= 255  # de-normalise (optional)
 
+    # check resize
+    scale_factor = max_size / max(h, w)
+    if scale_factor < 1:
+        h = math.ceil(scale_factor * h)
+        w = math.ceil(scale_factor * w)
+
     # Build Image
     mosaic = np.full((int(ns * h), int(ns * w), 3), 255, dtype=np.uint8)  # init
     for i, im in enumerate(images):
@@ -331,6 +337,10 @@ def plot_images(images,
             break
         x, y = int(w * (i // ns)), int(h * (i % ns))  # block origin
         im = im.transpose(1, 2, 0)
+
+        if scale_factor < 1:
+            im = cv2.resize(im, (w, h))
+            
         mosaic[y:y + h, x:x + w, :] = im
 
     # Resize (optional)

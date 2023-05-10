@@ -248,7 +248,8 @@ class BaseTrainer:
         self.train_loader = self.get_dataloader(
             self.train_rgb_set, self.train_ir_set, batch_size=batch_size, rank=RANK, mode='train')
         if RANK in (-1, 0):
-            self.test_loader = self.get_dataloader(self.test_rgb_set,self.test_ir_set, batch_size=batch_size * 2, rank=-1, mode='val')
+            self.test_loader = self.get_dataloader(
+                self.test_rgb_set, self.test_ir_set, batch_size=batch_size * 2, rank=-1, mode='val')
             self.validator = self.get_validator()
             metric_keys = self.validator.metrics.keys + self.label_loss_items(prefix='val')
             self.metrics = dict(zip(metric_keys, [0] * len(metric_keys)))  # TODO: init metrics for plot_results()?
@@ -319,7 +320,11 @@ class BaseTrainer:
                 # Forward
                 with torch.cuda.amp.autocast(self.amp):
                     batch = self.preprocess_batch(batch)
-                    preds = self.model(batch['img'])
+                    imgs_rgb = batch['img'][:, :3, :, :]
+                    imgs_ir = batch['img'][:, 3:, :, :]
+
+                    preds = self.model(imgs_rgb, imgs_ir)
+                    
                     self.loss, self.loss_items = self.criterion(preds, batch)
                     if RANK != -1:
                         self.loss *= world_size
@@ -343,8 +348,8 @@ class BaseTrainer:
                         ('%11s' * 2 + '%11.4g' * (2 + loss_len)) %
                         (f'{epoch + 1}/{self.epochs}', mem, *losses, batch['cls'].shape[0], batch['img'].shape[-1]))
                     self.run_callbacks('on_batch_end')
-                    if self.args.plots and ni in self.plot_idx:
-                        self.plot_training_samples(batch, ni)
+                    # if self.args.plots and ni in self.plot_idx:
+                    #     self.plot_training_samples(batch, ni)
 
                 self.run_callbacks('on_train_batch_end')
 
@@ -389,8 +394,8 @@ class BaseTrainer:
             LOGGER.info(f'\n{epoch - self.start_epoch + 1} epochs completed in '
                         f'{(time.time() - self.train_time_start) / 3600:.3f} hours.')
             self.final_eval()
-            if self.args.plots:
-                self.plot_metrics()
+            # if self.args.plots:
+            #     self.plot_metrics()
             self.run_callbacks('on_train_end')
         torch.cuda.empty_cache()
         self.run_callbacks('teardown')
