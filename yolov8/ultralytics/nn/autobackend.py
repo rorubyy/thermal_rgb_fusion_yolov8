@@ -310,9 +310,9 @@ class AutoBackend(nn.Module):
             im = im.permute(0, 2, 3, 1)  # torch BCHW to numpy BHWC shape(1,320,192,3)
 
         if self.pt or self.nn_module:  # PyTorch
-            y = self.model(im, augment=augment, visualize=visualize) if augment or visualize else self.model(im)
+            y = self.model(im, im)
         elif self.jit:  # TorchScript
-            y = self.model(im)
+            y = self.model(im, im)
         elif self.dnn:  # ONNX OpenCV DNN
             im = im.cpu().numpy()  # torch to numpy
             self.net.setInput(im)
@@ -410,7 +410,7 @@ class AutoBackend(nn.Module):
          """
         return torch.tensor(x).to(self.device) if isinstance(x, np.ndarray) else x
 
-    def warmup(self, imgsz=(1, 3, 640, 640)):
+    def warmup(self, imgsz=(1, 6, 640, 640)):
         """
         Warm up the model by running one forward pass with a dummy input.
 
@@ -424,7 +424,7 @@ class AutoBackend(nn.Module):
         if any(warmup_types) and (self.device.type != 'cpu' or self.triton):
             im = torch.empty(*imgsz, dtype=torch.half if self.fp16 else torch.float, device=self.device)  # input
             for _ in range(2 if self.jit else 1):  #
-                self.forward(im)  # warmup
+                self.forward(im, im)  # warmup
 
     @staticmethod
     def _apply_default_class_names(data):

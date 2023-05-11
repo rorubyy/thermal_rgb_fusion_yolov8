@@ -340,7 +340,8 @@ def plot_images(images,
 
         if scale_factor < 1:
             im = cv2.resize(im, (w, h))
-            
+
+        im = im[:, :, :3]
         mosaic[y:y + h, x:x + w, :] = im
 
     # Resize (optional)

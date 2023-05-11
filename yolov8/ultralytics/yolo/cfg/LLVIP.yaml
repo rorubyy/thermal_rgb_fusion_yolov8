@@ -7,10 +7,10 @@
 
 
 # train and val data as 1) directory: path/images/, 2) file: path/images.txt, or 3) list: [path1/images/, path2/images/]
-train_rgb: /root/code/yolov8/ultralytics/yolo/datasets/LLVIP/RGB/images/train
-val_rgb: /root/code/yolov8/ultralytics/yolo/datasets/LLVIP/RGB/images/val
-train_ir: /root/code/yolov8/ultralytics/yolo/datasets/LLVIP/IR/images/train
-val_ir: /root/code/yolov8/ultralytics/yolo/datasets/LLVIP/IR/images/val
+train_rgb: /root/code/ultralytics/yolo/datasets/LLVIP/RGB/images/train
+val_rgb: /root/code/ultralytics/yolo/datasets/LLVIP/RGB/images/val
+train_ir: /root/code/ultralytics/yolo/datasets/LLVIP/IR/images/train
+val_ir: /root/code/ultralytics/yolo/datasets/LLVIP/IR/images/val
 
 # number of classes
 nc: 1
