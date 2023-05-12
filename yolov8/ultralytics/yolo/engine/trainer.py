@@ -332,6 +332,8 @@ class BaseTrainer:
                         else self.loss_items
 
                 # Backward
+                # EDIT
+                torch.use_deterministic_algorithms(False)                
                 self.scaler.scale(self.loss).backward()
 
                 # Optimize - https://pytorch.org/docs/master/notes/amp_examples.html

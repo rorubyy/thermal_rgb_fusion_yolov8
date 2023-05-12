@@ -3,7 +3,7 @@ version: "2.4"
 services:
   lab:
     #container_name: aicup
-    image: shungfu/cuda11.3_cudnn8
+    image: ultralytics
     # build: .
     runtime: nvidia
     environment:
