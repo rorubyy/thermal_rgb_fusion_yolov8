@@ -134,7 +134,7 @@ def check_source(source):
     return source, webcam, screenshot, from_img, in_memory, tensor
 
 
-def load_inference_source(source=None, imgsz=640, vid_stride=1):
+def load_inference_source(source_rgb=None, source_ir=None, imgsz=640, vid_stride=1):
     """
     Loads an inference source for object detection and applies necessary transformations.
 
@@ -145,23 +145,24 @@ def load_inference_source(source=None, imgsz=640, vid_stride=1):
 
     Returns:
         dataset (Dataset): A dataset object for the specified input source.
-    """
-    source, webcam, screenshot, from_img, in_memory, tensor = check_source(source)
-    source_type = source.source_type if in_memory else SourceTypes(webcam, screenshot, from_img, tensor)
+    """,
+    source_rgb, webcam, screenshot, from_img, in_memory, tensor = check_source(source_rgb)
+    source_ir, webcam, screenshot, from_img, in_memory, tensor = check_source(source_ir)
+    source_type = source_rgb.source_type if in_memory else SourceTypes(webcam, screenshot, from_img, tensor)
 
     # Dataloader
     if tensor:
-        dataset = LoadTensor(source)
+        dataset = LoadTensor(source_rgb, source_ir)
     elif in_memory:
-        dataset = source
+        dataset = source_rgb
     elif webcam:
-        dataset = LoadStreams(source, imgsz=imgsz, vid_stride=vid_stride)
+        dataset = LoadStreams(source_rgb, source_ir, imgsz=imgsz, vid_stride=vid_stride)
     elif screenshot:
-        dataset = LoadScreenshots(source, imgsz=imgsz)
+        dataset = LoadScreenshots(source_rgb, source_ir, imgsz=imgsz)
     elif from_img:
-        dataset = LoadPilAndNumpy(source, imgsz=imgsz)
+        dataset = LoadPilAndNumpy(source_rgb, source_ir, imgsz=imgsz)
     else:
-        dataset = LoadImages(source, imgsz=imgsz, vid_stride=vid_stride)
+        dataset = LoadImages(source_rgb, source_ir, imgsz=imgsz, vid_stride=vid_stride)
 
     # Attach source types to the dataset
     setattr(dataset, 'source_type', source_type)

@@ -291,7 +291,7 @@ class AutoBackend(nn.Module):
 
         self.__dict__.update(locals())  # assign all variables to self
 
-    def forward(self, im, augment=False, visualize=False):
+    def forward(self, im_rgb, im_ir, augment=False, visualize=False):
         """
         Runs inference on the YOLOv8 MultiBackend model.
 
@@ -303,16 +303,23 @@ class AutoBackend(nn.Module):
         Returns:
             (tuple): Tuple containing the raw output tensor, and processed output for visualization (if visualize=True)
         """
-        b, ch, h, w = im.shape  # batch, channel, height, width
-        if self.fp16 and im.dtype != torch.float16:
-            im = im.half()  # to FP16
+        b, ch, h, w = im_rgb.shape  # batch, channel, height, width
+        # ----- RGB -----
+        if self.fp16 and im_rgb.dtype != torch.float16:
+            im_rgb = im_rgb.half()  # to FP16
         if self.nhwc:
-            im = im.permute(0, 2, 3, 1)  # torch BCHW to numpy BHWC shape(1,320,192,3)
-
+            im_rgb = im_rgb.permute(0, 2, 3, 1)  # torch BCHW to numpy BHWC shape(1,320,192,3)
+            
+        # ----- IR -----
+        if self.fp16 and im_ir.dtype != torch.float16:
+            im_ir = im_ir.half()  # to FP16
+        if self.nhwc:
+            im_ir = im_ir.permute(0, 2, 3, 1)  # torch BCHW to numpy BHWC shape(1,320,192,3)
+            
         if self.pt or self.nn_module:  # PyTorch
-            y = self.model(im, im)
+            y = self.model(im_rgb, im_ir)
         elif self.jit:  # TorchScript
-            y = self.model(im, im)
+            y = self.model(im_rgb, im_ir)
         elif self.dnn:  # ONNX OpenCV DNN
             im = im.cpu().numpy()  # torch to numpy
             self.net.setInput(im)

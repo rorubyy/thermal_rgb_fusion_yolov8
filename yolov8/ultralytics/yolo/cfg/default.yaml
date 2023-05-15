@@ -5,7 +5,7 @@ task: detect  # YOLO task, i.e. detect, segment, classify, pose
 mode: train  # YOLO mode, i.e. train, val, predict, export, track, benchmark
 
 # Train settings -------------------------------------------------------------------------------------------------------
-model: yolov8n.pt # path to model file, i.e. yolov8n.pt, yolov8n.yaml
+model: /root/code/best.pt # path to model file, i.e. yolov8n.pt, yolov8n.yaml
 data: LLVIP.yaml # path to data file, i.e. coco128.yaml
 epochs: 100  # number of epochs to train for
 patience: 50  # epochs to wait for no observable improvement for early stopping of training
@@ -49,7 +49,9 @@ dnn: False  # use OpenCV DNN for ONNX inference
 plots: True  # save plots during train/val
 
 # Prediction settings --------------------------------------------------------------------------------------------------
-source:  # source directory for images or videos
+source_rgb: "/root/code/ultralytics/yolo/datasets/LLVIP/RGB/images/val"
+source_ir: "/root/code/ultralytics/yolo/datasets/LLVIP/IR/images/val"
+# source:  # source directory for images or videos
 show: False  # show results if possible
 save_txt: False  # save results as .txt file
 save_conf: False  # save results with confidence scores

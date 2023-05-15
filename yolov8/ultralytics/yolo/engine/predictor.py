@@ -179,12 +179,13 @@ class BasePredictor:
         for _ in gen:  # running CLI inference without accumulating any outputs (do not modify)
             pass
 
-    def setup_source(self, source):
+    def setup_source(self, source_rgb, source_ir):
         """Sets up source and inference mode."""
         self.imgsz = check_imgsz(self.args.imgsz, stride=self.model.stride, min_dim=2)  # check image size
         self.transforms = getattr(self.model.model, 'transforms', classify_transforms(
             self.imgsz[0])) if self.args.task == 'classify' else None
-        self.dataset = load_inference_source(source=source, imgsz=self.imgsz, vid_stride=self.args.vid_stride)
+        self.dataset = load_inference_source(source_rgb=source_rgb, source_ir=source_ir,
+                                             imgsz=self.imgsz, vid_stride=self.args.vid_stride)
         self.source_type = self.dataset.source_type
         if not getattr(self, 'stream', True) and (self.dataset.mode == 'stream' or  # streams
                                                   len(self.dataset) > 1000 or  # images
@@ -193,7 +194,7 @@ class BasePredictor:
         self.vid_path, self.vid_writer = [None] * self.dataset.bs, [None] * self.dataset.bs
 
     @smart_inference_mode()
-    def stream_inference(self, source=None, model=None):
+    def stream_inference(self, source_rgb=None, source_ir=None, model=None):
         """Streams real-time inference on camera feed and saves results to file."""
         if self.args.verbose:
             LOGGER.info('')
@@ -202,7 +203,8 @@ class BasePredictor:
         if not self.model:
             self.setup_model(model)
         # Setup source every time predict is called
-        self.setup_source(source if source is not None else self.args.source)
+        self.setup_source(source_rgb if source_rgb is not None else self.args.source_rgb,
+                          source_ir if source_ir is not None else self.args.source_ir)
 
         # Check if save_dir/ label file exists
         if self.args.save or self.args.save_txt:
@@ -217,49 +219,71 @@ class BasePredictor:
         for batch in self.dataset:
             self.run_callbacks('on_predict_batch_start')
             self.batch = batch
-            path, im0s, vid_cap, s = batch
-            visualize = increment_path(self.save_dir / Path(path[0]).stem,
+            path_rgb, path_ir, im0s_rgb, im0s_ir, vid_cap, s_rgb, s_ir = batch
+            visualize = increment_path(self.save_dir / Path(path_rgb[0]).stem,
                                        mkdir=True) if self.args.visualize and (not self.source_type.tensor) else False
 
             # Preprocess
             with profilers[0]:
-                im = self.preprocess(im0s)
+                im_rgb = self.preprocess(im0s_rgb)
+                im_ir = self.preprocess(im0s_ir)
 
             # Inference
             with profilers[1]:
-                preds = self.model(im, augment=self.args.augment, visualize=visualize)
+                preds = self.model(im_rgb, im_ir, augment=self.args.augment, visualize=visualize)
 
             # Postprocess
             with profilers[2]:
-                self.results = self.postprocess(preds, im, im0s)
+                self.results_rgb = self.postprocess(preds, im_rgb, im0s_rgb)
+                self.results_ir = self.postprocess(preds, im_ir, im0s_ir)
             self.run_callbacks('on_predict_postprocess_end')
 
             # Visualize, save, write results
-            n = len(im0s)
+            n = len(im0s_rgb)
             for i in range(n):
-                self.results[i].speed = {
+                self.results_rgb[i].speed = {
+                    'preprocess': profilers[0].dt * 1E3 / n,
+                    'inference': profilers[1].dt * 1E3 / n,
+                    'postprocess': profilers[2].dt * 1E3 / n}
+                self.results_ir[i].speed = {
                     'preprocess': profilers[0].dt * 1E3 / n,
                     'inference': profilers[1].dt * 1E3 / n,
                     'postprocess': profilers[2].dt * 1E3 / n}
                 if self.source_type.tensor:  # skip write, show and plot operations if input is raw tensor
                     continue
-                p, im0 = path[i], im0s[i].copy()
-                p = Path(p)
 
+                p_rgb, im0_rgb = path_rgb[i], im0s_rgb[i].copy()
+                p_ir, im0_ir = path_ir[i], im0s_ir[i].copy()
+
+                p_rgb = Path(p_rgb)
+                p_ir = Path(p_ir)
+                # ----- RGB -----
                 if self.args.verbose or self.args.save or self.args.save_txt or self.args.show:
-                    s += self.write_results(i, self.results, (p, im, im0))
+                    s_rgb += self.write_results(i, self.results_rgb, (p_rgb, im_rgb, im0_rgb))
 
                 if self.args.show and self.plotted_img is not None:
-                    self.show(p)
+                    self.show(p_rgb)
 
                 if self.args.save and self.plotted_img is not None:
-                    self.save_preds(vid_cap, i, str(self.save_dir / p.name))
+                    save_file_rgb = "RGB_"+p_rgb.name
+                    self.save_preds(vid_cap, i, str(self.save_dir / save_file_rgb))
+
+                # ----- IR -----
+                if self.args.verbose or self.args.save or self.args.save_txt or self.args.show:
+                    s_ir += self.write_results(i, self.results_ir, (p_ir, im_ir, im0_ir))
+
+                if self.args.show and self.plotted_img is not None:
+                    self.show(p_ir)
+
+                if self.args.save and self.plotted_img is not None:
+                    save_file_ir ="IR_"+ p_ir.name
+                    self.save_preds(vid_cap, i, str(self.save_dir / save_file_ir))
             self.run_callbacks('on_predict_batch_end')
-            yield from self.results
+            yield from self.results_rgb
 
             # Print time (inference-only)
             if self.args.verbose:
-                LOGGER.info(f'{s}{profilers[1].dt * 1E3:.1f}ms')
+                LOGGER.info(f'{s_rgb}{profilers[1].dt * 1E3:.1f}ms')
 
         # Release assets
         if isinstance(self.vid_writer[-1], cv2.VideoWriter):

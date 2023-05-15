@@ -152,40 +152,67 @@ class LoadScreenshots:
 
 class LoadImages:
     # YOLOv8 image/video dataloader, i.e. `yolo predict source=image.jpg/vid.mp4`
-    def __init__(self, path, imgsz=640, vid_stride=1):
+    def __init__(self, path_rgb, path_ir, imgsz=640, vid_stride=1):
         """Initialize the Dataloader and raise FileNotFoundError if file not found."""
-        if isinstance(path, str) and Path(path).suffix == '.txt':  # *.txt file with img/vid/dir on each line
-            path = Path(path).read_text().rsplit()
-        files = []
-        for p in sorted(path) if isinstance(path, (list, tuple)) else [path]:
-            p = str(Path(p).resolve())
-            if '*' in p:
-                files.extend(sorted(glob.glob(p, recursive=True)))  # glob
-            elif os.path.isdir(p):
-                files.extend(sorted(glob.glob(os.path.join(p, '*.*'))))  # dir
-            elif os.path.isfile(p):
-                files.append(p)  # files
-            else:
-                raise FileNotFoundError(f'{p} does not exist')
+        f_rgb = []
+        f_ir = []
 
-        images = [x for x in files if x.split('.')[-1].lower() in IMG_FORMATS]
-        videos = [x for x in files if x.split('.')[-1].lower() in VID_FORMATS]
-        ni, nv = len(images), len(videos)
+        # ----- RGB -----
+        if isinstance(path_rgb, str) and Path(path_rgb).suffix == '.txt':  # *.txt file with img/vid/dir on each line
+            path_rgb = Path(path_rgb).read_text().rsplit()
+
+        for p_rgb in sorted(path_rgb) if isinstance(path_rgb, (list, tuple)) else [path_rgb]:
+            p_rgb = str(Path(p_rgb).resolve())
+            if '*' in p_rgb:
+                f_rgb.extend(sorted(glob.glob(p_rgb, recursive=True)))  # glob
+            elif os.path.isdir(p_rgb):
+                f_rgb.extend(sorted(glob.glob(os.path.join(p_rgb, '*.*'))))  # dir
+            elif os.path.isfile(p_rgb):
+                f_rgb.append(p_rgb)  # files
+            else:
+                raise FileNotFoundError(f'{p_rgb} does not exist')
+
+        # ----- IR -----
+        if isinstance(path_ir, str) and Path(path_ir).suffix == '.txt':  # *.txt file with img/vid/dir on each line
+            path_ir = Path(path_ir).read_text().rsplit()
+
+        for p_ir in sorted(path_ir) if isinstance(path_ir, (list, tuple)) else [path_ir]:
+            p_ir = str(Path(p_ir).resolve())
+            if '*' in p_ir:
+                f_ir.extend(sorted(glob.glob(p_ir, recursive=True)))  # glob
+            elif os.path.isdir(p_ir):
+                f_ir.extend(sorted(glob.glob(os.path.join(p_ir, '*.*'))))  # dir
+            elif os.path.isfile(p_ir):
+                f_ir.append(p_ir)  # files
+            else:
+                raise FileNotFoundError(f'{p_ir} does not exist')
+
+        # ----- RGB -----
+        images_rgb = [x for x in f_rgb if x.split('.')[-1].lower() in IMG_FORMATS]
+        videos_rgb = [x for x in f_rgb if x.split('.')[-1].lower() in VID_FORMATS]
+        ni, nv = len(images_rgb), len(videos_rgb)
+
+        # ----- IR -----
+        images_ir = [x for x in f_ir if x.split('.')[-1].lower() in IMG_FORMATS]
+        videos_ir = [x for x in f_ir if x.split('.')[-1].lower() in VID_FORMATS]
 
         self.imgsz = imgsz
-        self.files = images + videos
+        self.files_rgb = images_rgb + videos_rgb
+        self.files_ir = images_ir + videos_ir
         self.nf = ni + nv  # number of files
         self.video_flag = [False] * ni + [True] * nv
         self.mode = 'image'
         self.vid_stride = vid_stride  # video frame-rate stride
         self.bs = 1
-        if any(videos):
+
+        if any(videos_rgb):
             self.orientation = None  # rotation degrees
-            self._new_video(videos[0])  # new video
+            self._new_video(videos_rgb[0])
+            self._new_video(videos_ir[0])
         else:
             self.cap = None
         if self.nf == 0:
-            raise FileNotFoundError(f'No images or videos found in {p}. '
+            raise FileNotFoundError(f'No images or videos found in {p_rgb} and {p_ir}. '
                                     f'Supported formats are:\nimages: {IMG_FORMATS}\nvideos: {VID_FORMATS}')
 
     def __iter__(self):
@@ -197,7 +224,8 @@ class LoadImages:
         """Return next image, path and metadata from dataset."""
         if self.count == self.nf:
             raise StopIteration
-        path = self.files[self.count]
+        path_ir = self.files_ir[self.count]
+        path_rgb = self.files_rgb[self.count]
 
         if self.video_flag[self.count]:
             # Read video
@@ -221,12 +249,15 @@ class LoadImages:
         else:
             # Read image
             self.count += 1
-            im0 = cv2.imread(path)  # BGR
-            if im0 is None:
-                raise FileNotFoundError(f'Image Not Found {path}')
-            s = f'image {self.count}/{self.nf} {path}: '
+            im0_rgb = cv2.imread(path_rgb)
+            im0_ir = cv2.imread(path_ir)  # BGR
+            # im0 = cv2.imread(path)  # BGR
+            if im0_rgb is None or im0_ir is None:
+                raise FileNotFoundError(f'Image Not Found {path_rgb}and{[path_ir]}')
+            s_rgb = f'image {self.count}/{self.nf} {path_rgb}: '
+            s_ir = f'image {self.count}/{self.nf} {path_ir}: '
 
-        return [path], [im0], self.cap, s
+        return [path_rgb], [path_ir], [im0_rgb], [im0_ir], self.cap, s_rgb, s_ir
 
     def _new_video(self, path):
         """Create a new video capture object."""
@@ -296,9 +327,10 @@ class LoadPilAndNumpy:
 
 class LoadTensor:
 
-    def __init__(self, imgs) -> None:
-        self.im0 = imgs
-        self.bs = imgs.shape[0]
+    def __init__(self, imgs_rgb, imgs_ir) -> None:
+        self.im_rgb = imgs_rgb
+        self.im_ir = imgs_ir
+        self.bs = imgs_rgb.shape[0]
         self.mode = 'image'
 
     def __iter__(self):
