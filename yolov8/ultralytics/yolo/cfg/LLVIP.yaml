@@ -11,6 +11,8 @@ train_rgb: /root/code/ultralytics/yolo/datasets/LLVIP/RGB/images/train
 val_rgb: /root/code/ultralytics/yolo/datasets/LLVIP/RGB/images/val
 train_ir: /root/code/ultralytics/yolo/datasets/LLVIP/IR/images/train
 val_ir: /root/code/ultralytics/yolo/datasets/LLVIP/IR/images/val
+test_rgb: /root/code/ultralytics/yolo/datasets/LLVIP/RGB/images/val
+test_ir: /root/code/ultralytics/yolo/datasets/LLVIP/IR/images/val
 
 # number of classes
 nc: 1

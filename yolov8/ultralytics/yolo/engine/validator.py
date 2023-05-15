@@ -66,7 +66,7 @@ class BaseValidator:
         """
         self.dataloader = dataloader
         self.pbar = pbar
-        self.args = args or get_cfg(DEFAULT_CFG)
+        self.args = get_cfg(DEFAULT_CFG)
         self.model = None
         self.data = None
         self.device = None
@@ -132,7 +132,8 @@ class BaseValidator:
                 self.args.workers = 0  # faster CPU val as time dominated by inference, not dataloading
             if not pt:
                 self.args.rect = False
-            self.dataloader = self.dataloader or self.get_dataloader(self.data.get(self.args.split), self.args.batch)
+            self.dataloader = self.dataloader or self.get_dataloader(
+                self.data['test_rgb'], self.data['test_ir'], self.args.batch)
 
             model.eval()
             model.warmup(imgsz=(1 if pt else self.args.batch, 3, imgsz, imgsz))  # warmup

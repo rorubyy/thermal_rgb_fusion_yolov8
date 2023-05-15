@@ -2,7 +2,7 @@
 # Default training settings and hyperparameters for medium-augmentation COCO training
 
 task: detect  # YOLO task, i.e. detect, segment, classify, pose
-mode: train  # YOLO mode, i.e. train, val, predict, export, track, benchmark
+mode: val  # YOLO mode, i.e. train, val, predict, export, track, benchmark
 
 # Train settings -------------------------------------------------------------------------------------------------------
 model: /root/code/best.pt # path to model file, i.e. yolov8n.pt, yolov8n.yaml
@@ -16,7 +16,7 @@ save_period: -1 # Save checkpoint every x epochs (disabled if < 1)
 cache: False  # True/ram, disk or False. Use cache for data loading
 device:  # device to run on, i.e. cuda device=0 or device=0,1,2,3 or device=cpu
 workers: 8  # number of worker threads for data loading (per RANK if DDP)
-project:  # project name
+project: LLVIP # project name
 name: LLVIP # experiment name, results saved to 'project/name' directory
 exist_ok: False  # whether to overwrite existing experiment
 pretrained: False  # whether to use a pretrained model
@@ -49,8 +49,8 @@ dnn: False  # use OpenCV DNN for ONNX inference
 plots: True  # save plots during train/val
 
 # Prediction settings --------------------------------------------------------------------------------------------------
-source_rgb: "/root/code/ultralytics/yolo/datasets/LLVIP/RGB/images/val"
-source_ir: "/root/code/ultralytics/yolo/datasets/LLVIP/IR/images/val"
+source_rgb: "/root/code/ultralytics/yolo/datasets/LLVIP/RGB/images/train/010001.jpg"
+source_ir: "/root/code/ultralytics/yolo/datasets/LLVIP/IR/images/train/010001.jpg"
 # source:  # source directory for images or videos
 show: False  # show results if possible
 save_txt: False  # save results as .txt file
