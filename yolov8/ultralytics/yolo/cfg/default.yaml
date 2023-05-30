@@ -49,8 +49,8 @@ dnn: False  # use OpenCV DNN for ONNX inference
 plots: True  # save plots during train/val
 
 # Prediction settings --------------------------------------------------------------------------------------------------
-source_rgb: "/root/code/ultralytics/yolo/datasets/LLVIP/RGB/images/train/010001.jpg"
-source_ir: "/root/code/ultralytics/yolo/datasets/LLVIP/IR/images/train/010001.jpg"
+source_rgb: "/root/code/ultralytics/yolo/datasets/LLVIP/RGB/images/val"
+source_ir: "/root/code/ultralytics/yolo/datasets/LLVIP/IR/images/val"
 # source:  # source directory for images or videos
 show: False  # show results if possible
 save_txt: False  # save results as .txt file
