@@ -30,7 +30,8 @@ backbone:
 
   ######### TransformerBlock Two #############
   # transformer fusion
-  - [[4,9], 1, GPT, [256]]   # 10-P3/8
+  # - [[4,9], 1, GPT, [256]]   # 10-P3/8
+  - [[4,9], 1, SwinTransformerBlock, [256]]   # 10-P3/8
   - [[4,10], 1, Add2, [256,0]]    # 11-P3/8 stream one x+trans[0]
   - [[9,10], 1, Add2, [256,1]]    # 12-P3/8 stream two x+trans[1]
 

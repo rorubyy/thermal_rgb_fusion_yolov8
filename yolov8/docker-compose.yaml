@@ -16,7 +16,7 @@ services:
       - .:/root/code
       - /tmp/.X11-unix:/tmp/.X11-unix
     ports:
-      - "8088:8088"
+      - "8086:8086"
     ipc: host
     privileged: false
     # command: "nvidia-smi"
