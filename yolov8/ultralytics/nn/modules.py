@@ -568,7 +568,7 @@ class GPT(nn.Module):
         """
         rgb_fea = x[0]  # rgb_fea (tensor): dim:(B, C, H, W)
         ir_fea = x[1]   # ir_fea (tensor): dim:(B, C, H, W)
-        # print("-----GPT in shape-----", rgb_fea.size(), ir_fea.size())
+        print("-----GPT in shape-----", rgb_fea.size(), ir_fea.size())
         assert rgb_fea.shape[0] == ir_fea.shape[0]
         bs, c, h, w = rgb_fea.shape
 
@@ -612,7 +612,7 @@ class GPT(nn.Module):
         rgb_fea_out = F.interpolate(
             rgb_fea_out, size=([h, w]), mode='bilinear')
         ir_fea_out = F.interpolate(ir_fea_out, size=([h, w]), mode='bilinear')
-        # print("-----GPT out shape-----", rgb_fea_out.size(), ir_fea_out.size())
+        print("-----GPT out shape-----", rgb_fea_out.size(), ir_fea_out.size())
 
         return rgb_fea_out, ir_fea_out
 # Model heads below ----------------------------------------------------------------------------------------------------
