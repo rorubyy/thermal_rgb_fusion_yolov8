@@ -538,10 +538,10 @@ class GPT(nn.Module):
         n = 1
         c_ = int(d_model * e)
         self.num_heads = c_ // 32
-        self.trans_blocks = nn.Sequential(
-            *[SwinTransformerLayer(dim=d_model, num_heads=self.num_heads) for i in range(n_layer)])
-        # self.trans_blocks = nn.Sequential(*[myTransformerBlock(d_model, d_k, d_v, h, block_exp, attn_pdrop, resid_pdrop)
-        #                                     for layer in range(n_layer)])
+        # self.trans_blocks = nn.Sequential(
+        # *[SwinTransformerLayer(dim=d_model, num_heads=self.num_heads) for i in range(n_layer)])
+        self.trans_blocks = nn.Sequential(*[myTransformerBlock(d_model, d_k, d_v, h, block_exp, attn_pdrop, resid_pdrop)
+                                            for layer in range(n_layer)])
 
         # decoder head
         self.ln_f = nn.LayerNorm(self.n_embd)
@@ -625,8 +625,12 @@ class GPT(nn.Module):
 
 
 class SwinTransformerBlock(nn.Module):
-    def __init__(self, c1, c2, num_heads=0, num_layers=1, window_size=8):
+    def __init__(self, c1, c2, num_heads=0, num_layers=1, window_size=8, vert_anchors=8, horz_anchors=8):
         super().__init__()
+        self.vert_anchors = vert_anchors
+        self.horz_anchors = horz_anchors
+        self.avgpool = nn.AdaptiveAvgPool2d(
+            (self.vert_anchors, self.horz_anchors))
         e = 0.5
         c_ = int(c2 * e)
         num_heads = c_ // 32
@@ -642,7 +646,10 @@ class SwinTransformerBlock(nn.Module):
         if self.conv is not None:
             x = self.conv(x)
         x = self.blocks(x)
-        return x
+        x_dim2 = int(x.shape[2]/2)
+        rgb_fea_out = x[:, :, :x_dim2, :]
+        ir_fea_out = x[:, :, x_dim2:, :]
+        return rgb_fea_out, ir_fea_out
 
 
 class WindowAttention(nn.Module):
@@ -709,7 +716,7 @@ class WindowAttention(nn.Module):
         try:
             x = (attn @ v).transpose(1, 2).reshape(B_, N, C)
         except:
-            #print(attn.dtype, v.dtype)
+            # print(attn.dtype, v.dtype)
             x = (attn.half() @ v).transpose(1, 2).reshape(B_, N, C)
         x = self.proj(x)
         x = self.proj_drop(x)
