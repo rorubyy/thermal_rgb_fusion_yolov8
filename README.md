@@ -3,7 +3,17 @@
     ```bash
     cd yolov8
     ```
-2. set up docker environment
+2. create docker image 
+    ```bash
+    cd docker
+    ```
+    ```bash
+    docker build -t ultralytics .
+    ````
+4. set up docker environment
+    ```bash
+    cd ..
+    ```
     ```bash
     docker compose up -d --build lab
     ```
