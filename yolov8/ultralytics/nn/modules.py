@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 from ultralytics.nn.droppath import DropPath
 from ultralytics.yolo.utils.tal import dist2bbox, make_anchors
+from timm.models.layers import trunc_normal_
 
 
 def autopad(k, p=None, d=1):  # kernel, padding, dilation
@@ -643,13 +644,15 @@ class SwinTransformerBlock(nn.Module):
                                                            shift_size=0 if (i % 2 == 0) else window_size // 2) for i in range(num_layers)])
 
     def forward(self, x):
-        if self.conv is not None:
-            x = self.conv(x)
+        # if self.conv is not None:
+        #     x = self.conv(x)
         x = self.blocks(x)
-        x_dim2 = int(x.shape[2]/2)
+        x_dim2 = int(x.shape[2] / 2)
         rgb_fea_out = x[:, :, :x_dim2, :]
         ir_fea_out = x[:, :, x_dim2:, :]
-        return rgb_fea_out, ir_fea_out
+        return torch.add(rgb_fea_out, ir_fea_out) 
+
+        # return rgb_fea_out, ir_fea_out
 
 
 class WindowAttention(nn.Module):
@@ -1137,3 +1140,89 @@ class Classify(nn.Module):
             x = torch.cat(x, 1)
         x = self.linear(self.drop(self.pool(self.conv(x)).flatten(1)))
         return x if self.training else x.softmax(1)
+
+
+class ChannelWeights(nn.Module):
+    def __init__(self, dim, reduction=1):
+        super(ChannelWeights, self).__init__()
+        self.dim = dim
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        self.mlp = nn.Sequential(
+            nn.Linear(self.dim * 4, self.dim * 4 // reduction),
+            nn.ReLU(inplace=True),
+            nn.Linear(self.dim * 4 // reduction, self.dim * 2),
+            nn.Sigmoid())
+
+    def forward(self, x1, x2):
+        B, _, H, W = x1.shape
+        x = torch.cat((x1, x2), dim=1)
+        avg = self.avg_pool(x).view(B, self.dim * 2)
+        max = self.max_pool(x).view(B, self.dim * 2)
+        y = torch.cat((avg, max), dim=1)  # B 4C
+        y = self.mlp(y).view(B, self.dim * 2, 1)
+        channel_weights = y.reshape(B, 2, self.dim, 1, 1).permute(1, 0, 2, 3, 4)  # 2 B C 1 1
+        return channel_weights
+
+
+class SpatialWeights(nn.Module):
+    def __init__(self, dim, reduction=1):
+        super(SpatialWeights, self).__init__()
+        self.dim = dim
+        self.mlp = nn.Sequential(
+            nn.Conv2d(self.dim * 2, self.dim // reduction, kernel_size=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(self.dim // reduction, 2, kernel_size=1),
+            nn.Sigmoid())
+
+    def forward(self, x1, x2):
+        B, _, H, W = x1.shape
+        x = torch.cat((x1, x2), dim=1)  # B 2C H W
+        spatial_weights = self.mlp(x).reshape(B, 2, 1, H, W).permute(1, 0, 2, 3, 4)  # 2 B 1 H W
+        return spatial_weights
+
+
+class FRM(nn.Module):
+    def __init__(self, dim, reduction=1, lambda_c=.5, lambda_s=.5):
+        super(FRM, self).__init__()
+        self.lambda_c = lambda_c
+        self.lambda_s = lambda_s
+        self.channel_weights = ChannelWeights(dim=dim, reduction=reduction)
+        self.spatial_weights = SpatialWeights(dim=dim, reduction=reduction)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+        elif isinstance(m, nn.Conv2d):
+            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            fan_out //= m.groups
+            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+            if m.bias is not None:
+                m.bias.data.zero_()
+
+    def forward(self, x):
+        x1 = x[0]
+        x2 = x[1]
+        channel_weights = self.channel_weights(x1, x2)
+        spatial_weights = self.spatial_weights(x1, x2)
+        out_x1 = x1 + self.lambda_c * channel_weights[1] * x2 + self.lambda_s * spatial_weights[1] * x2
+        out_x2 = x2 + self.lambda_c * channel_weights[0] * x1 + self.lambda_s * spatial_weights[0] * x1
+        return out_x1, out_x2
+
+
+class Mix(nn.Module):
+    #  x + transformer[0] or x + transformer[1]
+    def __init__(self, c1, index):
+        super().__init__()
+        self.index = index
+
+    def forward(self, x):
+        if self.index == 0:
+            return torch.add(x[0], x[1][0])
+        elif self.index == 1:
+            return torch.add(x[0], x[1][1])

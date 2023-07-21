@@ -31,9 +31,12 @@ backbone:
   ######### TransformerBlock Two #############
   # transformer fusion
   # - [[4,9], 1, GPT, [256]]   # 10-P3/8
-  - [[4,9], 1, SwinTransformerBlock, [256]]   # 10-P3/8
-  - [[4,10], 1, Add2, [256,0]]    # 11-P3/8 stream one x+trans[0]
-  - [[9,10], 1, Add2, [256,1]]    # 12-P3/8 stream two x+trans[1]
+  - [[4,9], 1, FRM, [256]]   # 10-P3/8 
+  - [[4,10], 1, Mix, [256,0]]    # 11-P3/8 stream one x+trans[0]
+  - [[9,10], 1, Mix, [256,1]]   
+  # - [[4,9], 1, SwinTransformerBlock, [256]]   # 10-P3/8
+  # - [[4,10], 1, Add2, [256,0]]    # 11-P3/8 stream one x+trans[0]
+  # - [[9,10], 1, Add2, [256,1]]    # 12-P3/8 stream two x+trans[1]
 
 
   ######### TransformerBlock Three #############
@@ -45,9 +48,12 @@ backbone:
   - [-1, 6, C2f, [512, True]]   
   # transformer fusion
   # - [[14,16], 1, GPT, [512]]   # 17-P3/8
-  - [[14,16], 1, SwinTransformerBlock, [512]]   # 17-P3/8
-  - [[14,17], 1, Add2, [512,0]]    # 18-P3/8 stream one x+trans[0]
-  - [[16,17], 1, Add2, [512,1]]    # 19-P3/8 stream two x+trans[1]
+  # - [[14,16], 1, SwinTransformerBlock, [512]]   # 17-P3/8
+  # - [[14,17], 1, Add2, [512,0]]    # 18-P3/8 stream one x+trans[0]
+  # - [[16,17], 1, Add2, [512,1]]    # 19-P3/8 stream two x+trans[1]
+  - [[14,16], 1, FRM, [512]]   # 17-P3/8
+  - [[14,17], 1, Mix, [512,0]]    # 18-P3/8 stream one x+trans[0]
+  - [[16,17], 1, Mix, [512,1]]    # 19-P3/8 stream two x+trans[1]
 
 
   ######### TransformerBlock Four #############
@@ -61,15 +67,22 @@ backbone:
   - [-1, 1, SPPF, [1024, 5]]  
   # transformer fusion
   # - [[22,25], 1, GPT, [1024]]    # 26-P5/32
-  - [[22,25], 1, SwinTransformerBlock, [1024]]    # 26-P5/32
-  - [[22,26], 1, Add2, [1024,0]]    # 27-P5/32 stream one x+trans[0]
-  - [[25,26], 1, Add2, [1024,1]]    # 28-P5/32 stream two x+trans[1]
+  # - [[22,25], 1, SwinTransformerBlock, [1024]]    # 26-P5/32
+  # - [[22,26], 1, Add2, [1024,0]]    # 27-P5/32 stream one x+trans[0]
+  # - [[25,26], 1, Add2, [1024,1]]    # 28-P5/32 stream two x+trans[1]
+  - [[22,25], 1, FRM, [1024]]    # 26-P5/32
+  - [[22,26], 1, Mix, [1024,0]]    # 27-P5/32 stream one x+trans[0]
+  - [[25,26], 1, Mix, [1024,1]]    # 28-P5/32 stream two x+trans[1]
 
 
   ######### Add Block #############
-  - [[11,12], 1, Add, [1]]   # 29-P3/8 fusion backbone P3
-  - [[18,19], 1, Add, [1]]   # 30-P4/16 fusion backbone P4
-  - [[27,28], 1, Add, [1]]   # 31-P5/32 fusion backbone P5
+  - [[11,12], 1, SwinTransformerBlock, [256]]   # 10-P3/8
+  - [[18,19], 1, SwinTransformerBlock, [512]]   # 17-P3/8
+  - [[27,28], 1, SwinTransformerBlock, [1024]]    # 26-P5/32
+ 
+  # - [[11,12], 1, Add, [1]]   # 29-P3/8 fusion backbone P3
+  # - [[18,19], 1, Add, [1]]   # 30-P4/16 fusion backbone P4
+  # - [[27,28], 1, Add, [1]]   # 31-P5/32 fusion backbone P5
 
 
 

@@ -8,9 +8,9 @@ import thop
 import torch
 import torch.nn as nn
 
-from ultralytics.nn.modules import (C1, C2, C3, C3TR, GPT, SPP, SPPF, Add, Add2, Bottleneck, BottleneckCSP, C2f, C3Ghost, C3x, Classify,
+from ultralytics.nn.modules import (C1, C2, C3, C3TR, GPT, SPP, SPPF, Add, Add2, Mix, Bottleneck, BottleneckCSP, C2f, C3Ghost, C3x, Classify,
                                     Concat, Conv, ConvTranspose, Detect, DWConv, DWConvTranspose2d, Ensemble, Focus,
-                                    GhostBottleneck, GhostConv, Pose, Segment, SwinTransformerBlock)
+                                    GhostBottleneck, GhostConv, Pose, Segment, SwinTransformerBlock, FRM)
 from ultralytics.yolo.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, colorstr, emojis, yaml_load
 from ultralytics.yolo.utils.checks import check_requirements, check_suffix, check_yaml
 from ultralytics.yolo.utils.plotting import feature_visualization
@@ -534,7 +534,13 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
         elif m is SwinTransformerBlock:
             c2 = ch[f[0]]
             args = [c1, c2]
+        elif m is FRM:
+            c2 = ch[f[0]]
+            args = [c1, c2]
         elif m is Add2:
+            c2 = ch[f[0]]
+            args = [c2, args[1]]
+        elif m is Mix:
             c2 = ch[f[0]]
             args = [c2, args[1]]
         elif m is Add:
