@@ -20,6 +20,8 @@ from ultralytics.yolo.utils.torch_utils import de_parallel, torch_distributed_ze
 from ultralytics.yolo.v8.detect import DetectionValidator
 
 # BaseTrainer python usage
+
+
 class DetectionTrainer(BaseTrainer):
 
     def build_dataset(self, img_path, mode='train', batch=None):
@@ -73,7 +75,8 @@ class DetectionTrainer(BaseTrainer):
 
     def get_model(self, cfg=None, weights=None, verbose=True):
         """Return a YOLO detection model."""
-        model = DetectionModel(cfg='/root/code/ultralytics/models/v8/yolov8_fusion_rgb_thermal.yaml', nc=self.data['nc'], verbose=verbose and RANK == -1)
+        model = DetectionModel(cfg='/root/code/ultralytics/models/v8/FRM_Swin.yaml',
+                               nc=self.data['nc'], verbose=verbose and RANK == -1)
         if weights:
             model.load(weights)
         return model

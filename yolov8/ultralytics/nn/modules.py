@@ -828,7 +828,7 @@ class SwinTransformerLayer(nn.Module):
 
     def forward(self, x):
         # reshape x[b c h w] to x[b l c]
-        # x = torch.cat([x[0], x[1]], dim=2)  # concat
+        x = torch.cat([x[0][0], x[0][1]], dim=2)  # concat
         _, _, H_, W_ = x.shape
 
         Padding = False
@@ -1215,12 +1215,12 @@ class FRM(nn.Module):
         out_x1 = x1 + self.lambda_c * channel_weights[1] * x2 + self.lambda_s * spatial_weights[1] * x2
 
         out_x2 = x2 + self.lambda_c * channel_weights[0] * x1 + self.lambda_s * spatial_weights[0] * x1
-        x = torch.cat([out_x1, out_x2], dim=2)
-        swin_block= SwinTransformerBlock(c1=self.dim,c2=self.dim)
-        rgb_fea_out, ir_fea_out = swin_block(x)
-        
+        # x = torch.cat([out_x1, out_x2], dim=2)
+        # swin_block= SwinTransformerBlock(c1=self.dim,c2=self.dim)
+        # rgb_fea_out, ir_fea_out = swin_block(x)
+
         # return SwinTransformerBlock(out_x1, out_x2)
-        return rgb_fea_out, ir_fea_out
+        return out_x1, out_x2
 
 
 class Mix(nn.Module):
