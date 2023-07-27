@@ -31,73 +31,71 @@ backbone:
   # transformer fusion
   # - [[4,9], 1, GPT, [256]]   # 10-P3/8
   - [[4, 9], 1, FRM, [256]] # 10-P3/8
-  - [[4, 10], 1, Mix, [256, 0]] # 11-P3/8 stream one x+trans[0]
-  - [[9, 10], 1, Mix, [256, 1]]
-  # - [[4,9], 1, SwinTransformerBlock, [256]]   # 10-P3/8
-  # - [[4,10], 1, Add2, [256,0]]    # 11-P3/8 stream one x+trans[0]
-  # - [[9,10], 1, Add2, [256,1]]    # 12-P3/8 stream two x+trans[1]
+  - [10, 1, SwinTransformerBlock, [256]] # 17-P3/8
+  - [[4, 11], 1, Mix, [256, 0]] # 12
+  - [[9, 11], 1, Mix, [256, 1]] # 13
 
   ######### TransformerBlock Three #############
   # stream one
-  - [11, 1, Conv, [512, 3, 2]] # 13-P4/16
-  - [-1, 6, C2f, [512, True]]
+  - [12, 1, Conv, [512, 3, 2]] # 14
+  - [-1, 6, C2f, [512, True]] # 15
   # stream two
-  - [12, 1, Conv, [512, 3, 2]] # 15-P4/16
-  - [-1, 6, C2f, [512, True]]
+  - [13, 1, Conv, [512, 3, 2]] # 16
+  - [-1, 6, C2f, [512, True]] # 17
   # transformer fusion
   # - [[14,16], 1, GPT, [512]]   # 17-P3/8
   # - [[14,16], 1, SwinTransformerBlock, [512]]   # 17-P3/8
   # - [[14,17], 1, Add2, [512,0]]    # 18-P3/8 stream one x+trans[0]
   # - [[16,17], 1, Add2, [512,1]]    # 19-P3/8 stream two x+trans[1]
-  - [[14, 16], 1, FRM, [512]] # 17-P3/8
-  - [[14, 17], 1, Mix, [512, 0]] # 18-P3/8 stream one x+trans[0]
-  - [[16, 17], 1, Mix, [512, 1]] # 19-P3/8 stream two x+trans[1]
+  - [[15, 17], 1, FRM, [512]] # 18
+  - [[15, 18], 1, Mix, [512, 0]] # 19
+  - [[17, 18], 1, Mix, [512, 1]] #20
 
   ######### TransformerBlock Four #############
   # stream one
-  - [18, 1, Conv, [1024, 3, 2]] # 20-P5/32
-  - [-1, 3, C2f, [1024, True]]
-  - [-1, 1, SPPF, [1024, 5]] # 22
+  - [19, 1, Conv, [1024, 3, 2]] # 21
+  - [-1, 3, C2f, [1024, True]] # 22
+  - [-1, 1, SPPF, [1024, 5]] # 23
   # stream two
-  - [19, 1, Conv, [1024, 3, 2]] # 23-P5/32
-  - [-1, 3, C2f, [1024, True]]
-  - [-1, 1, SPPF, [1024, 5]]
+  - [20, 1, Conv, [1024, 3, 2]] # 24
+  - [-1, 3, C2f, [1024, True]] # 25
+  - [-1, 1, SPPF, [1024, 5]] # 26
   # transformer fusion
   # - [[22,25], 1, GPT, [1024]]    # 26-P5/32
   # - [[22,25], 1, SwinTransformerBlock, [1024]]    # 26-P5/32
   # - [[22,26], 1, Add2, [1024,0]]    # 27-P5/32 stream one x+trans[0]
   # - [[25,26], 1, Add2, [1024,1]]    # 28-P5/32 stream two x+trans[1]
-  - [[22, 25], 1, FRM, [1024]] # 26-P5/32
-  - [[22, 26], 1, Mix, [1024, 0]] # 27-P5/32 stream one x+trans[0]
-  - [[25, 26], 1, Mix, [1024, 1]] # 28-P5/32 stream two x+trans[1]
+  - [[23, 26], 1, FRM, [1024]] # 27
+  - [[23, 27], 1, Mix, [1024, 0]] # 28
+  - [[26, 27], 1, Mix, [1024, 1]] # 29
 
   ######### Add Block #############
-  # - [[11,12], 1, SwinTransformerBlock, [256]]   # 10-P3/8
+  # - [[11,12], 1, SwinTransformerBlock, [256]]   # 30
   # - [[18,19], 1, SwinTransformerBlock, [512]]   # 17-P3/8
   # - [[27,28], 1, SwinTransformerBlock, [1024]]    # 26-P5/32
 
-  - [[11, 12], 1, Add, [1]] # 29-P3/8 fusion backbone P3
-  - [[18, 19], 1, Add, [1]] # 30-P4/16 fusion backbone P4
-  - [[27, 28], 1, Add, [1]] # 31-P5/32 fusion backbone P5
+  - [[12, 13], 1, Add, [1]] # 30
+  - [[19, 20], 1, Add, [1]] # 31
+  - [[28, 29], 1, Add, [1]] # 32
 
 # YOLOv8 head
 head:
-  - [-1, 1, Conv, [512, 1, 1]] # 32
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
-  - [[-1, 30], 1, Concat, [1]] # cat backbone P4
-  - [-1, 3, C2f, [512]] # 35
+  - [-1, 1, Conv, [512, 1, 1]] # 33
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]] # 34
+  - [[-1, 31], 1, Concat, [1]] # 35
+  - [-1, 3, C2f, [512]] # 36
 
-  - [-1, 1, Conv, [256, 1, 1]]
-  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
-  - [[-1, 29], 1, Concat, [1]] # cat backbone P3
-  - [-1, 3, C2f, [256]] # 39 (P3/8-small)
+  - [-1, 1, Conv, [256, 1, 1]] # 37
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]] # 38
+  - [[-1, 30], 1, Concat, [1]] # 39
+  - [-1, 3, C2f, [256]] # 40
 
-  - [-1, 1, Conv, [256, 3, 2]]
-  - [[-1, 36], 1, Concat, [1]] # cat head P4
-  - [-1, 3, C2f, [512]] # 42 (P4/16-medium)
+  - [-1, 1, Conv, [256, 3, 2]] # 41
+  - [[-1, 37], 1, Concat, [1]] # 42
+  - [-1, 3, C2f, [512]] # 43
 
-  - [-1, 1, Conv, [512, 3, 2]]
-  - [[-1, 32], 1, Concat, [1]] # cat head P5
-  - [-1, 3, C2f, [1024]] # 45 (P5/32-large)
+  - [-1, 1, Conv, [512, 3, 2]] # 44
+  - [[-1, 33], 1, Concat, [1]] # 45
+  - [-1, 3, C2f, [1024]] # 46
 
-  - [[39, 42, 45], 1, Detect, [nc]] # Detect(P3, P4, P5)
+  - [[40, 43, 46], 1, Detect, [nc]] # 47

@@ -650,7 +650,8 @@ class SwinTransformerBlock(nn.Module):
         x_dim2 = int(x.shape[2] / 2)
         rgb_fea_out = x[:, :, :x_dim2, :]
         ir_fea_out = x[:, :, x_dim2:, :]
-        return torch.add(rgb_fea_out, ir_fea_out) 
+        return rgb_fea_out, ir_fea_out
+        # return torch.add(rgb_fea_out, ir_fea_out)
 
         # return rgb_fea_out, ir_fea_out
 
@@ -827,7 +828,7 @@ class SwinTransformerLayer(nn.Module):
 
     def forward(self, x):
         # reshape x[b c h w] to x[b l c]
-        x = torch.cat([x[0], x[1]], dim=2)  # concat
+        # x = torch.cat([x[0], x[1]], dim=2)  # concat
         _, _, H_, W_ = x.shape
 
         Padding = False
@@ -1185,6 +1186,7 @@ class SpatialWeights(nn.Module):
 class FRM(nn.Module):
     def __init__(self, dim, reduction=1, lambda_c=.5, lambda_s=.5):
         super(FRM, self).__init__()
+        self.dim = dim
         self.lambda_c = lambda_c
         self.lambda_s = lambda_s
         self.channel_weights = ChannelWeights(dim=dim, reduction=reduction)
@@ -1211,8 +1213,14 @@ class FRM(nn.Module):
         channel_weights = self.channel_weights(x1, x2)
         spatial_weights = self.spatial_weights(x1, x2)
         out_x1 = x1 + self.lambda_c * channel_weights[1] * x2 + self.lambda_s * spatial_weights[1] * x2
+
         out_x2 = x2 + self.lambda_c * channel_weights[0] * x1 + self.lambda_s * spatial_weights[0] * x1
-        return out_x1, out_x2
+        x = torch.cat([out_x1, out_x2], dim=2)
+        swin_block= SwinTransformerBlock(c1=self.dim,c2=self.dim)
+        rgb_fea_out, ir_fea_out = swin_block(x)
+        
+        # return SwinTransformerBlock(out_x1, out_x2)
+        return rgb_fea_out, ir_fea_out
 
 
 class Mix(nn.Module):
